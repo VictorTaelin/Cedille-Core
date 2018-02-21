@@ -1,0 +1,60 @@
+/CNat
+  @P *
+  @Z P
+  @S @p P P
+  P
+
+/CZ
+  #P *
+  #Z P
+  #S @p P P
+  Z
+
+/CS
+  #n CNat
+  #P *
+  #Z P
+  #S @p P P
+  $S $$$n P Z S
+
+/CAdd
+  #n CNat
+  #m CNat
+  #P *
+  #Z P
+  #S @p P P
+  $$$n P
+    $$$m P Z S
+    S
+
+/C0
+  CZ
+
+/C1
+  $CS C0
+
+/C2
+  $CS C1
+
+/C3
+  $CS C2
+
+/bad
+  #T *
+  $T T
+
+/the
+  #T *
+  #x T
+  x
+
+/C1_eq_C1
+  =C1 C1
+
+/C2_eq_C2
+  =C2 C2
+
+/C1_refl
+  :C1 the
+
+$$the C1_eq_C1 C1_refl
