@@ -329,7 +329,7 @@ annotate = go [] where
   -- Forall: (T : s) and (U[(t:T)/x] : s) implies ((@x T U) : *), where (s) is either (*) or (+)
   go ctx (Term (All era nam typ bod)) = let
     typ' = go ctx typ
-    bod' = \var -> go ((nam, (var, norOf typ')) : ctx) (bod var)
+    bod' = ex nam (norOf typ') ctx bod
     rVal = All era nam typ' bod'
     rNor = Term (All era nam (norOf typ') (\val -> norOf (bod' val)))
     rTyp = if isSort (typOf typ') && not (isErr (typOf (bod' (Term (Var nam)))))
@@ -397,7 +397,7 @@ annotate = go [] where
     sty0 = norOf (sty' (norOf fst'))
     sty1 = typOf snd'
     rVal = Bis nam fst' sty' snd'
-    rNor = Term (Bis nam (norOf fst') (norOf . sty') (norOf snd'))
+    rNor = norOf fst'
     rTyp = if
       not (isErr (typOf fst')) || 
       not (isErr sty0) ||
