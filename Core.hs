@@ -337,7 +337,7 @@ annotate = go [] where
       else Term Err
     in Ann rVal rNor rTyp
 
-  -- Lambda: (T : *) and (u[(x:T)/x] : U) implies ((λx t u) : (@x T U))
+  -- Lambda: (T : *) and (u[(x:T)/x] : U) implies ((#x t u) : (@x T U))
   go ctx (Term (Lam era nam typ bod)) = let
     typ' = go ctx typ
     bod' = ex nam (norOf typ') ctx bod
@@ -350,7 +350,7 @@ annotate = go [] where
       else Term Err
     in Ann rVal rNor rTyp
 
-  -- Application: (t : (@x T U)) and (u : T) implies (($t u) : U[t/x])
+  -- Application: (t : (@x T U)) and (u : T) implies ((/t u) : U[t/x])
   go ctx (Term (App era fun arg)) = let
     fun' = go ctx fun
     arg' = go ctx arg
@@ -379,18 +379,18 @@ annotate = go [] where
     rTyp = typOf res'
     in Ann rVal rNor rTyp
 
-  -- Dependent intersection: (T : *) and (U[(t:T)/x] : *) implies ((&x T U) : *)
+  -- Dependent intersection: (T : *) and (U[(t:T)/x] : *) implies ((^x T U) : *)
   go ctx (Term (Dep nam fty sty)) = let
     fty' = go ctx fty
     sty' = ex nam (norOf fty') ctx sty
     rVal = Dep nam fty' sty'
-    rNor = Term (Dep nam fty sty)
+    rNor = Term (Dep nam (norOf fty') (norOf . sty'))
     rTyp = case (typOf fty', typOf (sty' (Term (Var nam)))) of
       (Term Typ, Term Typ) -> Term Typ
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
-  -- Dependent intersection proof: (t : T), (u : U[t/x]), (t equals u) implies ((^x U t u) : (&x T U))
+  -- Dependent intersection proof: (t : T), (u : U[t/x]), (t equals u) implies ((|x t U u) : (^x T U))
   go ctx (Term (Bis nam fst sty snd)) = let
     fst' = go ctx fst
     sty' = ex nam (typOf fst') ctx sty
@@ -408,7 +408,7 @@ annotate = go [] where
       else Term Err
     in Ann rVal rNor rTyp
 
-  -- First projection: (t : (&x T U)) implies ((< t) : T) 
+  -- First projection: (t : (^x T U)) implies ((< t) : T) 
   go ctx (Term (Fst bis)) = let
     bis' = go ctx bis
     rVal = Fst bis'
@@ -420,7 +420,7 @@ annotate = go [] where
       otherwise -> Term Err
     in Ann rVal rNor rTyp
   
-  -- Bis projection: (t : (&x T U)) implies ((> t) : U[t/x]) 
+  -- Bis projection: (t : (^x T U)) implies ((> t) : U[t/x]) 
   go ctx (Term (Snd bis)) = let
     bis' = go ctx bis
     rVal = Fst bis'
@@ -466,7 +466,7 @@ annotate = go [] where
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
-  -- Cast: (e : (= t u)) and (t : T) implies ((%e t u) : T)
+  -- Cast: (e : (= t u)) and (t : T) implies (u : T)
   go ctx (Term (Cst eql fst snd)) = let
     eql' = go ctx eql
     fst' = go ctx fst

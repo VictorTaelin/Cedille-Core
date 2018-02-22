@@ -82,7 +82,30 @@ $IBool
   @F /P CFalse
   /P x
 
+$ITrue
+  #P @ CBool *
+  #T /P CTrue
+  #F /P CFalse
+  T
+
+$IFalse
+  #P @ CBool *
+  #T /P CTrue
+  #F /P CFalse
+  F
+
 $Bool
   ^b CBool /IBool b
 
+$True
+  |b CTrue /IBool x ITrue
+
 Bool
+
+
+
+
+
+
+
+
