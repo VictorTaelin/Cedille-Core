@@ -24,6 +24,7 @@ module Core where
 
 -- TODO: get rid of this small import
 import Data.List (find)
+import Debug.Trace
 
 -- Primitive constructors
 data Prim r b
@@ -411,9 +412,7 @@ annotate = go [] where
   go ctx (Term (Fst bis)) = let
     bis' = go ctx bis
     rVal = Fst bis'
-    rNor = case norOf bis' of
-      (Term (Bis nam fst sty snd)) -> fst
-      otherwise -> Term (Fst (norOf bis'))
+    rNor = norOf bis'
     rTyp = case typOf bis' of
       (Term (Dep nam fty sty)) -> fty
       otherwise -> Term Err
@@ -423,9 +422,7 @@ annotate = go [] where
   go ctx (Term (Snd bis)) = let
     bis' = go ctx bis
     rVal = Snd bis'
-    rNor = case norOf bis' of
-      (Term (Bis nam fst sty snd)) -> snd
-      otherwise -> Term (Snd (norOf bis'))
+    rNor = norOf bis'
     rTyp = case typOf bis' of
       (Term (Dep nam fty sty)) -> sty (norOf bis')
       otherwise -> Term Err
