@@ -423,12 +423,12 @@ annotate = go [] where
   -- Bis projection: (t : (^x T U)) implies ((> t) : U[t/x]) 
   go ctx (Term (Snd bis)) = let
     bis' = go ctx bis
-    rVal = Fst bis'
+    rVal = Snd bis'
     rNor = case norOf bis' of
       (Term (Bis nam fst sty snd)) -> snd
-      otherwise -> Term (Fst (norOf bis'))
-    rTyp = case norOf bis' of
-      (Term (Bis nam fst sty snd)) -> sty fst
+      otherwise -> Term (Snd (norOf bis'))
+    rTyp = case typOf bis' of
+      (Term (Dep nam fty sty)) -> sty (norOf bis')
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
