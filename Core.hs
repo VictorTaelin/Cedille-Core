@@ -332,7 +332,7 @@ annotate = go [] where
     bod' = \var -> go ((nam, (var, norOf typ')) : ctx) (bod var)
     rVal = All era nam typ' bod'
     rNor = Term (All era nam (norOf typ') (\val -> norOf (bod' val)))
-    rTyp = if isSort (typOf typ') && isSort (typOf (bod' (Term (Var nam))))
+    rTyp = if isSort (typOf typ') && not (isErr (typOf (bod' (Term (Var nam)))))
       then Term Typ
       else Term Err
     in Ann rVal rNor rTyp
