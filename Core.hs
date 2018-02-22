@@ -135,8 +135,8 @@ fromString src = snd (parseTerm src) [] where
   -- Dependent intersection proof
   parseTerm ('|' : src) = let
     (src0, nam) = parseName src
-    (src1, typ) = parseTerm src0
-    (src2, fst) = parseTerm src1
+    (src1, fst) = parseTerm src0
+    (src2, typ) = parseTerm src1
     (src3, snd) = parseTerm src2
     in (src3, \ ctx -> Term (Bis nam (fst ctx) (\ var -> typ ((nam,var) : ctx)) (snd ctx)))
 
