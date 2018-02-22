@@ -186,23 +186,103 @@ fromString src = snd (parseTerm src) [] where
 -- Converts a Term to an ASCII String
 toString :: Term -> String
 toString = go 0 where
-  go d (Term Typ)                   = "*"
-  go d (Term Kin)                   = "+"
-  go d (Term (Var nam))             = nam
-  go d (Term (All era nam typ bod)) = let n = nam ++ show d in "@" ++ n ++ " " ++ go d typ ++ " " ++ go (d+1) (bod (Term (Var n)))
-  go d (Term (Lam era nam typ bod)) = let n = nam ++ show d in "#" ++ n ++ " " ++ go d typ ++ " " ++ go (d+1) (bod (Term (Var n)))
-  go d (Term (App era fun arg))     = "$" ++ go d fun ++ " " ++ go d arg
-  go d (Term (Let nam val bod))     = let n = nam ++ show d in "/" ++ n ++ " " ++ go d val ++ " " ++ go (d+1) (bod (Term (Var n)))
-  go d (Term (Dep nam fst snd))     = let n = nam ++ show d in "&" ++ n ++ " " ++ go d fst ++ " " ++ go (d+1) (snd (Term (Var n)))
-  go d (Term (Sec nam typ fst snd)) = let n = nam ++ show d in "^" ++ n ++ " " ++ go d (typ (Term (Var n))) ++ " " ++ go d fst ++ " " ++ go d snd
-  go d (Term (Fst sec))             = "<" ++ go d sec
-  go d (Term (Snd sec))             = ">" ++ go d sec
-  go d (Term (Eql fst snd))         = "=" ++ go d fst ++ " " ++ go d snd
-  go d (Term (Rfl prf ret))         = ":" ++ go d prf ++ " " ++ go d ret
-  go d (Term (Sym eql))             = "~" ++ go d eql
-  go d (Term (Cst eql fst snd))     = "!" ++ go d eql ++ " " ++ go d fst ++ " " ++ go d snd
-  go d (Term (Rwt nam eql typ ret)) = let n = nam ++ show d in "%" ++ n ++ " " ++ go d eql ++ " " ++ go d (typ (Term (Var n))) ++ " " ++ go d ret
-  go d (Term Err)                   = "?"
+  -- Type
+  go d (Term Typ)
+    = "*"
+
+  -- Kind
+  go d (Term Kin)
+    = "+"
+
+  -- Variable
+  go d (Term (Var nam))
+    = nam
+
+  -- Forall
+  go d (Term (All era nam typ bod)) = let
+    nam' = nam ++ show d
+    typ' = go d typ
+    bod' = go (d+1) (bod (Term (Var nam')))
+    in "@" ++ nam' ++ " " ++ typ' ++ " " ++ bod'
+
+  -- Lambda
+  go d (Term (Lam era nam typ bod)) = let
+    nam' = nam ++ show d
+    typ' = go d typ
+    bod' = go (d+1) (bod (Term (Var nam')))
+    in "#" ++ nam' ++ " " ++ typ' ++ " " ++ bod'
+
+  -- Application
+  go d (Term (App era fun arg)) = let
+    fun' = go d fun
+    arg' = go d arg
+    in "$" ++ fun' ++ " " ++ arg'
+
+  -- Local definition
+  go d (Term (Let nam val bod)) = let
+    nam' = nam ++ show d
+    val' = go d val
+    bod' = go (d+1) (bod (Term (Var nam')))
+    in "/" ++ nam' ++ " " ++ val' ++ " " ++ bod'
+
+  -- Dependent intersection
+  go d (Term (Dep nam fst snd)) = let
+    nam' = nam ++ show d
+    fst' = go d fst
+    snd' = go (d+1) (snd (Term (Var nam')))
+    in "&" ++ nam' ++ " " ++ fst' ++ " " ++ snd'
+
+  -- Dependent intersection rpoof
+  go d (Term (Sec nam typ fst snd)) = let
+    nam' = nam ++ show d
+    typ' = go d (typ (Term (Var nam')))
+    fst' = go d fst
+    snd' = go d snd
+    in "^" ++ nam' ++ " " ++ typ' ++ " " ++ fst' ++ " " ++ snd'
+
+  -- First projection
+  go d (Term (Fst sec)) =
+    "<" ++ go d sec
+
+  -- Second projection
+  go d (Term (Snd sec)) =
+    ">" ++ go d sec
+    
+  -- Equality
+  go d (Term (Eql fst snd)) = let
+    fst' = go d fst
+    snd' = go d snd
+    in "=" ++ fst' ++ " " ++ snd'
+
+  -- Reflexivity
+  go d (Term (Rfl prf ret)) = let
+    prf' = go d prf
+    ret' = go d ret
+    in ":" ++ prf' ++ " " ++ ret'
+
+  -- Symmetry
+  go d (Term (Sym eql)) = let
+    eql' = go d eql
+    in "~" ++ eql'
+
+  -- Cast
+  go d (Term (Cst eql fst snd)) = let
+    eql' = go d eql
+    fst' = go d fst
+    snd' = go d snd
+    in "!" ++ eql' ++ " " ++ fst' ++ " " ++ snd'
+
+  -- Rewrite
+  go d (Term (Rwt nam eql typ ret)) = let
+    nam' = nam ++ show d
+    eql' = go d eql
+    typ' = go d (typ (Term (Var nam')))
+    ret' = go d ret
+    in "%" ++ nam' ++ " " ++ eql' ++ " " ++ typ' ++ " " ++ ret'
+
+  -- Error
+  go d (Term Err) =
+    "?"
 
 -- Recursivelly annotate every constructor of a term with its type and normal form.
 annotate :: Term -> Ann
