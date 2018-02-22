@@ -77,19 +77,19 @@ $CFalse
 
 $IBool
   #x CBool
-  @P @ CBool *
+  &P @ CBool *
   @T /P CTrue
   @F /P CFalse
   /P x
 
 $ITrue
-  #P @ CBool *
+  %P @ CBool *
   #T /P CTrue
   #F /P CFalse
   T
 
 $IFalse
-  #P @ CBool *
+  %P @ CBool *
   #T /P CTrue
   #F /P CFalse
   F
@@ -98,9 +98,42 @@ $Bool
   ^b CBool /IBool b
 
 $True
-  |b CTrue /IBool x ITrue
+  |b CTrue /IBool b ITrue
 
-Bool
+$False
+  |b CFalse /IBool b IFalse
+
+$Bool_induction_theorem
+  &P @ Bool *
+  @T /P True
+  @F /P False
+  @b Bool
+  /P b
+
+$Bool_induction
+  #b Bool
+  #P @ Bool *
+  #T /P True
+  #F /P False
+  $motive
+    #b CBool
+    @R *
+    @r @wit Bool
+       @prf /P wit
+       @eql =<wit b
+       R
+    R
+  $true_case
+    #R *
+    #r @wit Bool
+       @prf /P wit
+       @eql =<wit b
+       R
+    ///r True T :CTrue the
+  true_case
+
+
+//the =CTrue True :CTrue the
 
 
 
@@ -108,4 +141,18 @@ Bool
 
 
 
-
+  $motive
+    #b CBool
+    @R *
+    @r @wit Bool
+       @prf /P wit
+       @eql =<wit b
+       R
+    R
+  $true_case
+    #R *
+    #r @wit Bool
+       @prf /P wit
+       @eql =<wit CTrue
+       R
+    ///r True T :CTrue the

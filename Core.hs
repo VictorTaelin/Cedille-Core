@@ -24,7 +24,6 @@ module Core where
 
 -- TODO: get rid of this small import
 import Data.List (find)
-import Debug.Trace
 
 -- Primitive constructors
 data Prim r b
