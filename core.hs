@@ -7,19 +7,19 @@ module Core where
 -- | *   | Typ | 0   | type of types                                        |
 -- | +   | Kin | 1   | type of type of types                                |
 -- |     | Var | 2   | variable                                             |
--- | @   | All | 3   | forall                                               |
--- | #   | Lam | 4   | lambda                                               |
--- | $   | App | 5   | application                                          |
--- | /   | Let | 6   | local definition                                     |
--- | &   | Dep | 7   | dependent intersection theorem                       |
--- | ^   | Sec | 8   | dependent intersection proof                         |
+-- | @ & | All | 3   | forall                                               |
+-- | # % | Lam | 4   | lambda                                               |
+-- | / \ | App | 5   | application                                          |
+-- | $   | Let | 6   | local definition                                     |
+-- | |   | Dep | 7   | dependent intersection theorem                       |
+-- | ^   | Bis | 8   | dependent intersection proof                         |
 -- | <   | Fst | 9   | first element of dependent intersection              |
 -- | >   | Snd | A   | second element of dependent intersection             |
 -- | =   | Eql | B   | equality (t == t') theorem                           |
 -- | :   | Rfl | C   | equality (t == t') proof                             |
 -- | ~   | Sym | D   | symmetry of equality (t == t' implies t' == t)       |
 -- | !   | Cst | E   | if (t == t') and (t' : T'), cast (t : T) to (t : T') |
--- | %   | Rwt | F   | if (t == t'), cast (p : P[t/x]) to (p : P[t'/x])     |
+-- | ?   | Rwt | F   | if (t == t'), cast (p : P[t/x]) to (p : P[t'/x])     |
 -- '-----'-----'-----'------------------------------------------------------'
 
 -- TODO: get rid of this small import
@@ -35,7 +35,7 @@ data Prim r b
   | App Bool r r
   | Let String r (b -> r)
   | Dep String r (b -> r)
-  | Sec String (b -> r) r r
+  | Bis String r (b -> r) r
   | Fst r
   | Snd r
   | Eql r r
@@ -85,6 +85,13 @@ fromString src = snd (parseTerm src) [] where
     (src2, bod) = parseTerm src1
     in (src2, \ ctx -> Term (All False nam (typ ctx) (\ var -> bod ((nam,var) : ctx))))
 
+  -- Forall (erased)
+  parseTerm ('&' : src) = let
+    (src0, nam) = parseName src
+    (src1, typ) = parseTerm src0
+    (src2, bod) = parseTerm src1
+    in (src2, \ ctx -> Term (All True nam (typ ctx) (\ var -> bod ((nam,var) : ctx))))
+
   -- Lambda
   parseTerm ('#' : src) = let
     (src0, nam) = parseName src
@@ -92,25 +99,38 @@ fromString src = snd (parseTerm src) [] where
     (src2, bod) = parseTerm src1
     in (src2, \ ctx -> Term (Lam False nam (typ ctx) (\ var -> bod ((nam,var) : ctx))))
 
+  -- Lambda (erased)
+  parseTerm ('%' : src) = let
+    (src0, nam) = parseName src
+    (src1, typ) = parseTerm src0
+    (src2, bod) = parseTerm src1
+    in (src2, \ ctx -> Term (Lam True nam (typ ctx) (\ var -> bod ((nam,var) : ctx))))
+
   -- Application
-  parseTerm ('$' : src) = let
+  parseTerm ('/' : src) = let
     (src0, fun) = parseTerm src
     (src1, arg) = parseTerm src0
     in (src1, \ ctx -> Term (App False (fun ctx) (arg ctx)))
 
+  -- Application (erased)
+  parseTerm ('\\' : src) = let
+    (src0, fun) = parseTerm src
+    (src1, arg) = parseTerm src0
+    in (src1, \ ctx -> Term (App True (fun ctx) (arg ctx)))
+
   -- Local definition
-  parseTerm ('/' : src) = let
+  parseTerm ('$' : src) = let
     (src0, nam) = parseName src
     (src1, val) = parseTerm src0
     (src2, bod) = parseTerm src1
     in (src2, \ ctx -> Term (Let nam (val ctx) (\ var -> bod ((nam,var) : ctx))))
 
   -- Dependent intersection
-  parseTerm ('&' : src) = let
+  parseTerm ('|' : src) = let
     (src0, nam) = parseName src
-    (src1, fst) = parseTerm src0
-    (src2, snd) = parseTerm src1
-    in (src2, \ ctx -> Term (Dep nam (fst ctx) (\ var -> snd ((nam,var) : ctx))))
+    (src1, fty) = parseTerm src0
+    (src2, sty) = parseTerm src1
+    in (src2, \ ctx -> Term (Dep nam (fty ctx) (\ var -> sty ((nam,var) : ctx))))
 
   -- Dependent intersection proof
   parseTerm ('^' : src) = let
@@ -118,17 +138,17 @@ fromString src = snd (parseTerm src) [] where
     (src1, typ) = parseTerm src0
     (src2, fst) = parseTerm src1
     (src3, snd) = parseTerm src2
-    in (src3, \ ctx -> Term (Sec nam (\ var -> typ ((nam,var) : ctx)) (fst ctx) (snd ctx)))
+    in (src3, \ ctx -> Term (Bis nam (fst ctx) (\ var -> typ ((nam,var) : ctx)) (snd ctx)))
 
   -- First projection
   parseTerm ('<' : src) = let
-    (src0, sec) = parseTerm src
-    in (src0, \ ctx -> Term (Fst (sec ctx)))
+    (src0, bis) = parseTerm src
+    in (src0, \ ctx -> Term (Fst (bis ctx)))
 
   -- Second projection
   parseTerm ('>' : src) = let
-    (src0, sec) = parseTerm src
-    in (src0, \ ctx -> Term (Snd (sec ctx)))
+    (src0, bis) = parseTerm src
+    in (src0, \ ctx -> Term (Snd (bis ctx)))
 
   -- Equality
   parseTerm ('=' : src) = let
@@ -155,7 +175,7 @@ fromString src = snd (parseTerm src) [] where
     in (src2, \ ctx -> Term (Cst (eql ctx) (fst ctx) (snd ctx)))
 
   -- Rewrite
-  parseTerm ('%' : src) = let
+  parseTerm ('?' : src) = let
     (src0, nam) = parseName src
     (src1, eql) = parseTerm src0
     (src2, typ) = parseTerm src1
@@ -163,7 +183,7 @@ fromString src = snd (parseTerm src) [] where
     in (src3, \ ctx -> Term (Rwt nam (eql ctx) (\ var -> typ ((nam,var) : ctx)) (ret ctx)))
 
   -- Error
-  parseTerm ('?' : src) =
+  parseTerm ('_' : src) =
     (src, \ ctx -> Term Err)
 
   -- Variables
@@ -183,6 +203,10 @@ fromString src = snd (parseTerm src) [] where
     (src0, nam) = parseName src
     in (src0, chr : nam)
 
+  parseBool :: String -> (String, Bool)
+  parseBool ('\'' : src) = (src, True)
+  parseBool src = (src, False)
+
 -- Converts a Term to an ASCII String
 toString :: Term -> String
 toString = go 0 where
@@ -200,53 +224,56 @@ toString = go 0 where
 
   -- Forall
   go d (Term (All era nam typ bod)) = let
+    tag' = if era then "&" else "@"
     nam' = nam ++ show d
     typ' = go d typ
     bod' = go (d+1) (bod (Term (Var nam')))
-    in "@" ++ nam' ++ " " ++ typ' ++ " " ++ bod'
+    in tag' ++ nam' ++ " " ++ typ' ++ " " ++ bod'
 
   -- Lambda
   go d (Term (Lam era nam typ bod)) = let
+    tag' = if era then "%" else "#"
     nam' = nam ++ show d
     typ' = go d typ
     bod' = go (d+1) (bod (Term (Var nam')))
-    in "#" ++ nam' ++ " " ++ typ' ++ " " ++ bod'
+    in tag' ++ nam' ++ " " ++ typ' ++ " " ++ bod'
 
   -- Application
   go d (Term (App era fun arg)) = let
+    tag' = if era then "\\" else "/"
     fun' = go d fun
     arg' = go d arg
-    in "$" ++ fun' ++ " " ++ arg'
+    in tag' ++ fun' ++ " " ++ arg'
 
   -- Local definition
   go d (Term (Let nam val bod)) = let
     nam' = nam ++ show d
     val' = go d val
     bod' = go (d+1) (bod (Term (Var nam')))
-    in "/" ++ nam' ++ " " ++ val' ++ " " ++ bod'
+    in "|" ++ nam' ++ " " ++ val' ++ " " ++ bod'
 
   -- Dependent intersection
-  go d (Term (Dep nam fst snd)) = let
+  go d (Term (Dep nam fty sty)) = let
     nam' = nam ++ show d
-    fst' = go d fst
-    snd' = go (d+1) (snd (Term (Var nam')))
-    in "&" ++ nam' ++ " " ++ fst' ++ " " ++ snd'
+    fty' = go d fty
+    sty' = go (d+1) (sty (Term (Var nam')))
+    in "^" ++ nam' ++ " " ++ fty' ++ " " ++ sty'
 
   -- Dependent intersection rpoof
-  go d (Term (Sec nam typ fst snd)) = let
+  go d (Term (Bis nam fst sty snd)) = let
     nam' = nam ++ show d
-    typ' = go d (typ (Term (Var nam')))
     fst' = go d fst
+    sty' = go d (sty (Term (Var nam')))
     snd' = go d snd
-    in "^" ++ nam' ++ " " ++ typ' ++ " " ++ fst' ++ " " ++ snd'
+    in "$" ++ nam' ++ " " ++ fst' ++ " " ++ sty' ++ " " ++ snd'
 
   -- First projection
-  go d (Term (Fst sec)) =
-    "<" ++ go d sec
+  go d (Term (Fst bis)) =
+    "<" ++ go d bis
 
-  -- Second projection
-  go d (Term (Snd sec)) =
-    ">" ++ go d sec
+  -- Bis projection
+  go d (Term (Snd bis)) =
+    ">" ++ go d bis
     
   -- Equality
   go d (Term (Eql fst snd)) = let
@@ -278,11 +305,11 @@ toString = go 0 where
     eql' = go d eql
     typ' = go d (typ (Term (Var nam')))
     ret' = go d ret
-    in "%" ++ nam' ++ " " ++ eql' ++ " " ++ typ' ++ " " ++ ret'
+    in "?" ++ nam' ++ " " ++ eql' ++ " " ++ typ' ++ " " ++ ret'
 
   -- Error
   go d (Term Err) =
-    "?"
+    "_"
 
 -- Recursivelly annotate every constructor of a term with its type and normal form.
 annotate :: Term -> Ann
@@ -353,55 +380,55 @@ annotate = go [] where
     in Ann rVal rNor rTyp
 
   -- Dependent intersection: (T : *) and (U[(t:T)/x] : *) implies ((&x T U) : *)
-  go ctx (Term (Dep nam fst snd)) = let
-    fst' = go ctx fst
-    snd' = ex nam (norOf fst') ctx snd
-    rVal = Dep nam fst' snd'
-    rNor = Term (Dep nam fst snd)
-    rTyp = case (typOf fst', typOf (snd' (Term (Var nam)))) of
+  go ctx (Term (Dep nam fty sty)) = let
+    fty' = go ctx fty
+    sty' = ex nam (norOf fty') ctx sty
+    rVal = Dep nam fty' sty'
+    rNor = Term (Dep nam fty sty)
+    rTyp = case (typOf fty', typOf (sty' (Term (Var nam)))) of
       (Term Typ, Term Typ) -> Term Typ
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
   -- Dependent intersection proof: (t : T), (u : U[t/x]), (t equals u) implies ((^x U t u) : (&x T U))
-  go ctx (Term (Sec nam typ fst snd)) = let
+  go ctx (Term (Bis nam fst sty snd)) = let
     fst' = go ctx fst
+    sty' = ex nam (typOf fst') ctx sty
     snd' = go ctx snd
-    typ' = ex nam (typOf fst') ctx typ
-    typ0 = norOf (typ' (norOf fst'))
-    typ1 = typOf snd'
-    rVal = Sec nam typ' fst' snd'
-    rNor = Term (Sec nam (norOf . typ') (norOf fst') (norOf snd'))
+    sty0 = norOf (sty' (norOf fst'))
+    sty1 = typOf snd'
+    rVal = Bis nam fst' sty' snd'
+    rNor = Term (Bis nam (norOf fst') (norOf . sty') (norOf snd'))
     rTyp = if
       not (isErr (typOf fst')) || 
-      not (isErr typ0) ||
-      equals typ0 typ1 ||
+      not (isErr sty0) ||
+      equals sty0 sty1 ||
       equals (norOf fst') (norOf snd')
-      then Term (Dep nam (typOf fst') (norOf . typ'))
+      then Term (Dep nam (typOf fst') (norOf . sty'))
       else Term Err
     in Ann rVal rNor rTyp
 
   -- First projection: (t : (&x T U)) implies ((< t) : T) 
-  go ctx (Term (Fst sec)) = let
-    sec' = go ctx sec
-    rVal = Fst sec'
-    rNor = case norOf sec' of
-      (Term (Sec nam typ fst snd)) -> fst
-      otherwise -> Term (Fst (norOf sec'))
-    rTyp = case typOf sec' of
-      (Term (Dep nam fst snd)) -> fst
+  go ctx (Term (Fst bis)) = let
+    bis' = go ctx bis
+    rVal = Fst bis'
+    rNor = case norOf bis' of
+      (Term (Bis nam fst sty snd)) -> fst
+      otherwise -> Term (Fst (norOf bis'))
+    rTyp = case typOf bis' of
+      (Term (Dep nam fty sty)) -> fty
       otherwise -> Term Err
     in Ann rVal rNor rTyp
   
-  -- Second projection: (t : (&x T U)) implies ((> t) : U[t/x]) 
-  go ctx (Term (Snd sec)) = let
-    sec' = go ctx sec
-    rVal = Fst sec'
-    rNor = case norOf sec' of
-      (Term (Sec nam typ fst snd)) -> snd
-      otherwise -> Term (Fst (norOf sec'))
-    rTyp = case norOf sec' of
-      (Term (Sec nam typ fst snd)) -> typ fst
+  -- Bis projection: (t : (&x T U)) implies ((> t) : U[t/x]) 
+  go ctx (Term (Snd bis)) = let
+    bis' = go ctx bis
+    rVal = Fst bis'
+    rNor = case norOf bis' of
+      (Term (Bis nam fst sty snd)) -> snd
+      otherwise -> Term (Fst (norOf bis'))
+    rTyp = case norOf bis' of
+      (Term (Bis nam fst sty snd)) -> sty fst
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
@@ -517,25 +544,25 @@ equals = go 0 where
        go d (aArg var) (bArg var)
 
   -- Dependent intersection
-  go d (Term (Dep aNam aFst aSnd)) (Term (Dep bNam bFst bSnd)) = let
+  go d (Term (Dep aNam aFty aSty)) (Term (Dep bNam bFty bSty)) = let
     var = Term (Var (show d))
-    in go d aFst bFst &&
-       go d (aSnd var) (bSnd var)
+    in go d aFty bFty &&
+       go d (aSty var) (bSty var)
 
   -- Dependent intersection proof
-  go d (Term (Sec aNam aTyp aFst aSnd)) (Term (Sec bNam bTyp bFst bSnd)) = let
+  go d (Term (Bis aNam aFst aSty aSnd)) (Term (Bis bNam bFst bSty bSnd)) = let
     var = Term (Var (show d))
-    in go d (aTyp var) (bTyp var) &&
-       go d aFst bFst &&
+    in go d aFst bFst &&
+       go d (aSty var) (bSty var) &&
        go d aSnd bSnd
 
   -- First projection
-  go d (Term (Fst aSec)) (Term (Fst bSec)) =
-    go d aSec bSec
+  go d (Term (Fst aBis)) (Term (Fst bBis)) =
+    go d aBis bBis
 
-  -- Second projection
-  go d (Term (Snd aSec)) (Term (Snd bSec)) =
-    go d aSec bSec
+  -- Bis projection
+  go d (Term (Snd aBis)) (Term (Snd bBis)) =
+    go d aBis bBis
 
   -- Equality
   go d (Term (Eql aFst aSnd)) (Term (Eql bFst bSnd)) =
