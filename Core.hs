@@ -362,10 +362,9 @@ annotate = go [] where
         otherwise -> Term (App era (norOf fun') (norOf arg'))
     rTyp = case typOf fun' of
       (Term (All allEra allNam allTyp allBod)) ->
-        if equals allTyp (typOf arg') &&
-           allEra == era
-            then allBod (norOf arg')
-            else Term Err
+        if equals allTyp (typOf arg') && allEra == era
+           then allBod (norOf arg')
+           else Term Err
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
@@ -567,7 +566,7 @@ equals = go 0 where
   -- Equality
   go d (Term (Eql aFst aSnd)) (Term (Eql bFst bSnd)) =
     go d aFst bFst && 
-    go d bSnd bSnd
+    go d aSnd bSnd
 
   -- Reflexivity
   go d (Term (Rfl aVal aRet)) (Term (Rfl bVal bRet)) =
