@@ -58,7 +58,7 @@ $C1_refl
   :C1 the
 
 $CBool
-  @P *
+  &P *
   @T P
   @F P
   P
@@ -76,7 +76,13 @@ $CFalse
   F
 
 $IBool
-  @P @ * *
-  P
+  #x CBool
+  @P @ CBool *
+  @T /P CTrue
+  @F /P CFalse
+  /P x
 
-IBool
+$Bool
+  ^b CBool /IBool b
+
+Bool

@@ -11,8 +11,8 @@ module Core where
 -- | # % | Lam | 4   | lambda                                               |
 -- | / \ | App | 5   | application                                          |
 -- | $   | Let | 6   | local definition                                     |
--- | |   | Dep | 7   | dependent intersection theorem                       |
--- | ^   | Bis | 8   | dependent intersection proof                         |
+-- | ^   | Dep | 7   | dependent intersection theorem                       |
+-- | |   | Bis | 8   | dependent intersection proof                         |
 -- | <   | Fst | 9   | first element of dependent intersection              |
 -- | >   | Snd | A   | second element of dependent intersection             |
 -- | =   | Eql | B   | equality (t == t') theorem                           |
@@ -126,14 +126,14 @@ fromString src = snd (parseTerm src) [] where
     in (src2, \ ctx -> Term (Let nam (val ctx) (\ var -> bod ((nam,var) : ctx))))
 
   -- Dependent intersection
-  parseTerm ('|' : src) = let
+  parseTerm ('^' : src) = let
     (src0, nam) = parseName src
     (src1, fty) = parseTerm src0
     (src2, sty) = parseTerm src1
     in (src2, \ ctx -> Term (Dep nam (fty ctx) (\ var -> sty ((nam,var) : ctx))))
 
   -- Dependent intersection proof
-  parseTerm ('^' : src) = let
+  parseTerm ('|' : src) = let
     (src0, nam) = parseName src
     (src1, typ) = parseTerm src0
     (src2, fst) = parseTerm src1
@@ -250,7 +250,7 @@ toString = go 0 where
     nam' = nam ++ show d
     val' = go d val
     bod' = go (d+1) (bod (Term (Var nam')))
-    in "|" ++ nam' ++ " " ++ val' ++ " " ++ bod'
+    in "$" ++ nam' ++ " " ++ val' ++ " " ++ bod'
 
   -- Dependent intersection
   go d (Term (Dep nam fty sty)) = let
@@ -265,7 +265,7 @@ toString = go 0 where
     fst' = go d fst
     sty' = go d (sty (Term (Var nam')))
     snd' = go d snd
-    in "$" ++ nam' ++ " " ++ fst' ++ " " ++ sty' ++ " " ++ snd'
+    in "|" ++ nam' ++ " " ++ fst' ++ " " ++ sty' ++ " " ++ snd'
 
   -- First projection
   go d (Term (Fst bis)) =
