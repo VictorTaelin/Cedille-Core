@@ -372,12 +372,13 @@ annotate = go [] where
     typ1 = typOf snd'
     rVal = Sec nam typ' fst' snd'
     rNor = Term (Sec nam (norOf . typ') (norOf fst') (norOf snd'))
-    rTyp = if not (isErr (typOf fst')) || 
-              not (isErr typ0) ||
-              equals typ0 typ1 ||
-              equals (norOf fst') (norOf snd')
-              then Term (Dep nam (typOf fst') (norOf . typ'))
-              else Term Err
+    rTyp = if
+      not (isErr (typOf fst')) || 
+      not (isErr typ0) ||
+      equals typ0 typ1 ||
+      equals (norOf fst') (norOf snd')
+      then Term (Dep nam (typOf fst') (norOf . typ'))
+      else Term Err
     in Ann rVal rNor rTyp
 
   -- First projection: (t : (&x T U)) implies ((< t) : T) 
@@ -410,10 +411,11 @@ annotate = go [] where
     snd' = go ctx snd
     rVal = Eql fst' snd'
     rNor = Term (Eql (norOf fst') (norOf snd'))
-    rTyp = if not (isErr (typOf fst')) &&
-              not (isErr (typOf snd'))
-              then Term Typ
-              else Term Err
+    rTyp = if
+      not (isErr (typOf fst')) &&
+      not (isErr (typOf snd'))
+      then Term Typ
+      else Term Err
     in Ann rVal rNor rTyp
 
   -- Reflexivity: ((= t t) : *) implies ((: t u) : (= t t))
