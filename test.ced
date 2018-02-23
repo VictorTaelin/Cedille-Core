@@ -103,56 +103,41 @@ $True
 $False
   |b CFalse /IBool b IFalse
 
-$Bool_induction_theorem
-  &P @ Bool *
+$Bool_induction_proof
+  @P @ Bool *
   @T /P True
   @F /P False
   @b Bool
   /P b
 
 $Bool_induction
-  #b Bool
   #P @ Bool *
   #T /P True
   #F /P False
+  #b Bool
   $motive
     #b CBool
     @R *
-    @r @wit Bool
-       @prf /P wit
-       @eql =<wit b
-       R
+    @r @wit Bool @prf /P wit @eql =<wit b R
     R
   $true_case
     #R *
-    #r @wit Bool
-       @prf /P wit
-       @eql =<wit b
-       R
+    #r @wit Bool @prf /P wit @eql =<wit CTrue R
     ///r True T :CTrue the
-  true_case
-
-
-//the =CTrue True :CTrue the
-
-
-
-
-
-
-
-  $motive
-    #b CBool
-    @R *
-    @r @wit Bool
-       @prf /P wit
-       @eql =<wit b
-       R
-    R
-  $true_case
+  $false_case
     #R *
-    #r @wit Bool
-       @prf /P wit
-       @eql =<wit CTrue
-       R
-    ///r True T :CTrue the
+    #r @wit Bool @prf /P wit @eql =<wit CFalse R
+    ///r False F :CFalse the
+  ////\>b
+    motive
+    true_case
+    false_case
+    /P b
+    #wit Bool
+    #prf /P wit
+    #eql =<wit b
+    ?b eql /P b prf
+
+//the
+  Bool_induction_proof
+  Bool_induction
