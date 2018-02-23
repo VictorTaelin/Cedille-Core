@@ -118,21 +118,31 @@ $Bool_induction
   $motive
     #b CBool
     @R *
-    @r @wit Bool @prf /P wit @eql =<wit b R
+    @r @wit Bool
+       @prf /P wit
+       @eql =<wit b
+       R
     R
   $true_case
     #R *
-    #r @wit Bool @prf /P wit @eql =<wit CTrue R
+    #r @wit Bool
+       @prf /P wit
+       @eql =<wit CTrue
+       R
     ///r True T :CTrue the
   $false_case
     #R *
-    #r @wit Bool @prf /P wit @eql =<wit CFalse R
+    #r @wit Bool
+       @prf /P wit
+       @eql =<wit CFalse
+       R
     ///r False F :CFalse the
-  ////\>b
-    motive
-    true_case
-    false_case
-    /P b
+  $tuple
+    //\>b
+      motive
+      true_case
+      false_case
+  //tuple /P b
     #wit Bool
     #prf /P wit
     #eql =<wit b

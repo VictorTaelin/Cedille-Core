@@ -27,7 +27,6 @@ module Core where
 
 -- TODO: get rid of this small import
 import Data.List (find)
-import Debug.Trace
 
 -- Primitive constructors
 data Prim r b
@@ -368,7 +367,7 @@ annotate = go [] where
       (Term (All allEra allNam allTyp allBod)) ->
         if equals allTyp (typOf arg') && allEra == era
            then allBod (norOf arg')
-           else traceShow (toString allTyp, toString $ typOf arg') $ Term Err
+           else Term Err
       otherwise -> Term Err
     in Ann rVal rNor rTyp
 
