@@ -274,7 +274,7 @@ toString = go 0 where
   go d (Term (Fst bis)) =
     "<" ++ go d bis
 
-  -- Bis projection
+  -- Second projection
   go d (Term (Snd bis)) =
     ">" ++ go d bis
     
