@@ -2,25 +2,28 @@ module Core where
 
 -- Cedille Core (Aaron's Type Theory)
 --
---   Asc   Nam   Hex   Desc                                                 
--- ,-----,-----,-----,------------------------------------------------------,
--- | *   | Typ | 0   | type of types                                        |
--- | +   | Kin | 1   | type of type of types                                |
--- |     | Var | 2   | variable                                             |
--- | @ & | All | 3   | forall                                               |
--- | # % | Lam | 4   | lambda                                               |
--- | / \ | App | 5   | application                                          |
--- | $   | Let | 6   | local definition                                     |
--- | ^   | Dep | 7   | dependent intersection theorem                       |
--- | |   | Bis | 8   | dependent intersection proof                         |
--- | <   | Fst | 9   | first element of dependent intersection              |
--- | >   | Snd | A   | second element of dependent intersection             |
--- | =   | Eql | B   | equality (t == t') theorem                           |
--- | :   | Rfl | C   | equality (t == t') proof                             |
--- | ~   | Sym | D   | symmetry of equality (t == t' implies t' == t)       |
--- | !   | Cst | E   | if (t == t') and (t' : T'), cast (t : T) to (t : T') |
--- | ?   | Rwt | F   | if (t == t'), cast (p : P[t/x]) to (p : P[t'/x])     |
--- '-----'-----'-----'------------------------------------------------------'
+--   Nam   Hex   Syntax     Desc                                                 
+-- ,-----,-----,----------,--------------------------------------------------,
+-- | Typ | 0   | *        | type of types                                    |
+-- | Kin | 1   | +        | type of type of types                            |
+-- | Var | 2   |          | variable                                         |
+-- | All | 3   | @x T t   | forall                                           |
+-- | All | 3   | &x T t   | forall (erased)                                  |
+-- | Lam | 4   | #x T t   | lambda                                           |
+-- | Lam | 4   | %x T t   | lambda (erased)                                  |
+-- | App | 5   | /f x     | application                                      |
+-- | App | 5   | \f x     | application (erased)                             |
+-- | Let | 6   | $x t u   | local definition                                 |
+-- | Dep | 7   | ^x T U   | dependent intersection theorem                   |
+-- | Bis | 8   | |x t U u | dependent intersection proof                     |
+-- | Fst | 9   | <t       | first element of dependent intersection          |
+-- | Snd | A   | >t       | second element of dependent intersection         |
+-- | Eql | B   | =t u     | equality (t == u) theorem                        |
+-- | Rfl | C   | :t u     | equality (t == t) proof, erases to u             |
+-- | Sym | D   | ~e       | symmetry of equality (t == u implies u == t)     |
+-- | Cst | E   | !e t u   | if (t == u) and (t : T), cast (u : U) to (u : T) |
+-- | Rwt | F   | ?e T p   | if (t == u), cast (p : T[t/x]) to (p : U[t/x])   |
+-- '-----'-----'----------'--------------------------------------------------'
 
 -- TODO: get rid of this small import
 import Data.List (find)
