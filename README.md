@@ -13,7 +13,7 @@ Cedille is a language developed by [Aaron Stump](http://homepage.divms.uiowa.edu
 ## Typing rules
 
 
-The rules are implemented as described on [this]() paper. Here is a preview:
+The rules are implemented as described on [this](spec.pdf) paper. Here is a preview:
 
 ![rules.png](rules.png)
 
