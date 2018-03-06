@@ -1,6 +1,6 @@
 ## Cedille-Core 
 
-A minimal (<500 LOC) programming language capable of proving theorems about its own terms.
+A minimal (600 LOC) programming language capable of proving theorems about its own terms.
 
 ## What that means?
 
