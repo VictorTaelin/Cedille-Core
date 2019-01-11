@@ -1,0 +1,26 @@
+{
+  "name": "cedille-core",
+  "version": "0.1.0",
+  "description": "Minimalist proof language.",
+  "main": "cedille-core.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maiavictor/cedille-core.git"
+  },
+  "keywords": [
+    "type-theory",
+    "theorem-proving",
+    "cedille",
+    "lambda-calculus",
+    "functional-programming"
+  ],
+  "author": "Victor Maia",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/maiavictor/cedille-core/issues"
+  },
+  "homepage": "https://github.com/maiavictor/cedille-core#readme"
+}
