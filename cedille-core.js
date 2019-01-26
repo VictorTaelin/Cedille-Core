@@ -1,8 +1,10 @@
+// A context is an array of (name, type) tiples
 class Context {
   constructor(binds) {
     this.binds = binds;
   }
 
+  // Shifts all elements of the context
   shift(depth, inc) {
     var binds = [];
     for (var binder of this.binds) {  
@@ -15,16 +17,20 @@ class Context {
     return new Context(binds);
   }
 
+  // Extends the context with a term, shifting accourdingly
   extend([name, term]) {
     return new Context([[name, term ? term.shift(0, 1) : new Var(0)]].concat(this.shift(0, 1).binds));
   }
 
+  // Returns the type of an element given its index
   get_type(index) {
     if (index < this.binds.length) {
       return this.binds[index][1];
     }
   }
 
+  // Returns the name of an element given its index,
+  // avoiding capture by appending 's if needed
   get_name(index) {
     if (index < this.binds.length) {
       var name = this.binds[index][0];
@@ -37,6 +43,8 @@ class Context {
     }
   }
 
+  // Finds a term by its name, skipping a number of terms
+  // (this allows the x''' syntax be used to address shadowed vars)
   find_by_name(find_name, skip) {
     for (var [name, term] of this.binds) {
       if (find_name === name) {
@@ -50,6 +58,7 @@ class Context {
     return null;
   }
 
+  // Pretty prints a context
   show() {
     if (this.binds.length === 0) {
       return "(empty)\n";
@@ -62,20 +71,25 @@ class Context {
     }
   }
 
+  // Formats a type-mismatch error message
   show_mismatch(expect, actual, value) {
       var text = "";
-      text += "Type mismatch on " + value + ".\n";
-      text += "- Expect: " + expect.to_string(this) + "\n";
-      text += "- Actual: " + actual.to_string(this) + "\n"
-      text += "- Context:\n" + this.show();
+      text += "ERROR: Type mismatch on " + value + ".\n";
+      text += "- Expect: " + expect.eval(true).to_string(this) + "\n";
+      text += "- Actual: " + actual.eval(true).to_string(this) + "\n"
+      text += "- Context:\n" 
+      text += this.show();
       return text;
   }
 }
 
-class Nik {
-  constructor(name, term) {
-    this.name = name;
-    this.term = term;
+// A reference to a term. This is used to preserve names and cache types.
+class Ref {
+  constructor(name, term, clos) {
+    this.name = name; // String
+    this.term = term; // Term
+    this.clos = clos; // Bool
+    this.type = null; // Maybe Term
   }
 
   to_string(context = new Context([])) {
@@ -83,26 +97,31 @@ class Nik {
   }
 
   shift(depth, inc) {
-    return new Nik(this.name, this.term.shift(depth, inc));
+    return this.clos ? this : new Ref(this.name, this.term.shift(depth, inc));
   }
 
   subst(depth, val) {
-    return new Nik(this.name, this.term.subst(depth, val));
+    return this.clos ? this : new Ref(this.name, this.term.subst(depth, val));
   }
 
   equal(other) {
     return this.term.equal(other);
   }
 
-  eval() {
-    return this.term.eval();
+  eval(except_bind) {
+    return this.term.eval(except_bind);
   }
 
   check(context = new Context([])) {
-    return this.term.check(context);
+    if (!this.type) {
+      this.type = this.term.check(context);
+    }
+    return this.type;
   }
 }
 
+// The type of types (TODO: kinding system, right now we have Type : Type)
+// Syntax: Type
 class Typ {
   constructor() {
   }
@@ -123,7 +142,7 @@ class Typ {
     return other instanceof Typ;
   }
 
-  eval() {
+  eval(except_bind) {
     return new Typ();
   }
   
@@ -132,12 +151,14 @@ class Typ {
   }
 }
 
+// The type of a lambda (either erased or not)
+// Syntax: {x : A} B
 class All {
   constructor(eras, name, bind, body) {
-    this.eras = eras;
-    this.name = name;
-    this.bind = bind;
-    this.body = body;
+    this.eras = eras; // Bool (true if erased)
+    this.name = name; // String (argument name)
+    this.bind = bind; // Term (argument type)
+    this.body = body; // Term (function body)
   }
 
   to_string(context = new Context([])) {
@@ -174,11 +195,11 @@ class All {
     return false;
   }
 
-  eval() {
+  eval(except_bind) {
     var eras = this.eras;
     var name = this.name;
-    var bind = this.bind.eval();
-    var body = this.body.eval();
+    var bind = except_bind ? this.bind : this.bind.eval(except_bind);
+    var body = this.body.eval(except_bind);
     return new All(eras, name, bind, body);
   }
 
@@ -186,19 +207,21 @@ class All {
     var bind_v = this.bind;
     var bind_t = this.bind.check(context);
     var body_t = this.body.check(context.extend([this.name, bind_v]));
-    if (!bind_t.eval(true).equal(new Typ()) || !body_t.eval(true).equal(new Typ())) {
-      throw "Forall not a type. Context:\n" + context.show();
+    if (!bind_t.eval(false).equal(new Typ()) || !body_t.eval(false).equal(new Typ())) {
+      throw "Forall not a type: " + this.to_string(context) + "\n- Context:\n" + context.show();
     }
     return new Typ();
   }
 }
 
+// A lambda (either erased or not)
+// Syntax: [x : A] t
 class Lam {
   constructor(eras, name, bind, body) {
-    this.eras = eras;
-    this.name = name;
-    this.bind = bind;
-    this.body = body;
+    this.eras = eras; // Bool (true if erased)
+    this.name = name; // String (argument name)
+    this.bind = bind; // Term (argument type)
+    this.body = body; // Term (function body)
   }
 
   to_string(context = new Context([])) {
@@ -234,14 +257,14 @@ class Lam {
     return false;
   }
 
-  eval() {
+  eval(except_bind) {
     if (this.eras) {
-      return this.body.eval().subst(0, null);
+      return this.body.eval(except_bind).subst(0, null);
     } else {
       var eras = this.eras;
       var name = this.name;
       var bind = null;
-      var body = this.body.eval();
+      var body = this.body.eval(except_bind);
       return new Lam(eras, name, bind, body);
     }
   }
@@ -253,7 +276,7 @@ class Lam {
       var bind_v = this.bind;
       var bind_t = this.bind.check(context);
       var body_t = this.body.check(context.extend([this.name, bind_v]));
-      if (!bind_t.eval(true).equal(new Typ())) {
+      if (!bind_t.eval(false).equal(new Typ())) {
         throw "Function type not a type. Context:" + context.show();
       }
       return new All(this.eras, this.name, bind_v, body_t);
@@ -261,18 +284,20 @@ class Lam {
   }
 }
 
+// An application
+// Syntax: (f x y z ...)
 class App {
   constructor(eras, func, argm) {
-    this.eras = eras;
-    this.func = func;
-    this.argm = argm;
+    this.eras = eras; // Bool (true if erased)
+    this.func = func; // Term (the function)
+    this.argm = argm; // Term (the argument)
   }
 
   to_string(context = new Context([])) {
     var text = ")";
     var self = this;
     while (self instanceof App) {
-      text = " " + (self.eras ? "-" : "") + self.argm.to_string(context) + text;
+      text = " " + (self.eras ? "-" : "") + (self.argm?self.argm.to_string(context):"???") + text;
       self = self.func;
     }
     return "(" + self.to_string(context) + text;
@@ -302,40 +327,42 @@ class App {
     return false;
   }
 
-  eval() {
+  eval(except_bind) {
     if (this.eras) {
-      return this.func.eval();
+      return this.func.eval(except_bind);
     } else {
-      var func_v = this.func.eval();
+      var func_v = this.func.eval(except_bind);
       if (!(func_v instanceof Lam)) {
-        return new App(this.eras, func_v, this.argm.eval());
+        return new App(this.eras, func_v, this.argm.eval(except_bind));
+      } else {
+        return func_v.body.subst(0, this.argm).eval(except_bind);
       }
-      return func_v.body.subst(0, this.argm).eval();
     }
   }
 
   check(context = new Context([])) {
-    var func_t = this.func.check(context);
+    var func_t = this.func.check(context).eval(true);
     var argm_t = this.argm.check(context);
-    var func_T = func_t.eval(true);
-    var expect = func_T.bind;
-    var actual = argm_t.eval(true);
-    if (!func_T instanceof All) {
-      throw "Non-function application. Context:\n" + context.show();
+    var expect = func_t.bind;
+    var actual = argm_t;
+    if (!(func_t instanceof All)) {
+      throw "Non-function application on `" + this.to_string(context) + "`.\n- Context:\n" + context.show();
     }
-    if (func_T.eras !== this.eras) {
+    if (func_t.eras !== this.eras) {
       throw "Mismatched erasure on " + this.to_string(context) + ".";
     }
-    if (!expect.equal(actual)) {
-      throw context.show_mismatch(expect, actual, this.to_string(context) + " application");
+    if (!expect.eval(false).equal(actual.eval(false))) {
+      throw context.show_mismatch(expect, actual, "application: " + this.to_string(context));
     }
-    return func_t.eval(false).body.subst(0, this.argm);
+    return func_t.body.subst(0, this.argm);
   }
 }
 
+// A bruijn-indexed variable
+// Syntax: (a string representing its name)
 class Var {
   constructor(index) {
-    this.index = index;
+    this.index = index; // Number
   }
 
   to_string(context = new Context([])) {
@@ -361,7 +388,7 @@ class Var {
     return other instanceof Var && this.index === other.index;
   }
 
-  eval() {
+  eval(except_bind) {
     return new Var(this.index);
   }
 
@@ -370,11 +397,13 @@ class Var {
   }
 }
 
+// A dependent intersection between two types
+// Syntax: <x : A> B
 class Dep {
   constructor(name, typ0, typ1) {
-    this.name = name;
-    this.typ0 = typ0;
-    this.typ1 = typ1;
+    this.name = name; // String
+    this.typ0 = typ0; // Term
+    this.typ1 = typ1; // Term
   }
 
   to_string(context = new Context([])) {
@@ -407,78 +436,88 @@ class Dep {
     return false;
   }
 
-  eval() {
+  eval(except_bind) {
     var name = this.name;
-    var typ0 = this.typ0.eval();
-    var typ1 = this.typ1.eval();
+    var typ0 = this.typ0.eval(except_bind);
+    var typ1 = this.typ1.eval(except_bind);
     return new Dep(name, typ0, typ1);
   }
 
   check(context = new Context([])) {
     var typ0_t = this.typ0.check(context);
     var typ1_t = this.typ1.check(context.extend([this.name, this.typ0]));
-    if (!typ0_t.eval(true).equal(new Typ()) || !typ0_t.eval(true).equal(typ1_t.eval(true))) {
+    if (!typ0_t.eval(false).equal(new Typ()) || !typ0_t.eval(false).equal(typ1_t.eval(false))) {
       throw "Dependent intersection not a type. Context: " + context.show();
     }
     return new Typ();
   }
 }
 
-class Bth {
-  constructor(name, typ1, val0, val1) {
-    this.name = name;
-    this.typ1 = typ1;
+// The value of a dependent intersection
+// Syntax: @T = a & b
+class New {
+  constructor(type, val0, val1) {
+    this.type = type;
     this.val0 = val0;
     this.val1 = val1;
   }
 
   to_string(context = new Context([])) {
-    var name = this.name;
-    var typ1 = this.typ1.to_string(context.extend([this.name, null]));
+    var type = this.type.to_string(context);
     var val0 = this.val0.to_string(context);
     var val1 = this.val1.to_string(context);
-    return "@" + name + " : " + typ1 + " = " + val0 + " & " + val1;
+    return ":" + type + " = " + val0 + " & " + val1;
   }
 
   shift(depth, inc) {
-    var name = this.name;
-    var typ1 = this.typ1.shift(depth + 1, inc);
+    var type = this.type.shift(depth, inc);
     var val0 = this.val0.shift(depth, inc);
     var val1 = this.val1.shift(depth, inc);
-    return new Bth(name, typ1, val0, val1);
+    return new New(type, val0, val1);
   }
 
   subst(depth, val) {
-    var name = this.name;
-    var typ1 = this.typ1.subst(depth + 1, val && val.shift(0, 1));
+    var type = this.type.subst(depth, val);
     var val0 = this.val0.subst(depth, val);
     var val1 = this.val1.subst(depth, val);
-    return new Bth(name, typ1, val0, val1);
+    return new New(type, val0, val1);
   }
 
   equal(other) {
     return this.val0.equal(other);
   }
 
-  eval() {
-    return this.val0.eval();
+  eval(except_bind) {
+    return this.val0.eval(except_bind);
   }
   
   check(context = new Context([])) {
-    var val0_t = this.val0.check(context);
-    var val1_t = this.val1.check(context);
-    var expect = this.typ1.subst(0, this.val0).eval(true)
-    var actual = val1_t.eval(true);
-    if (!expect.equal(actual)) {
-      throw context.show_mismatch(expect, actual, this.to_string(context) + " intersection");
+    var type_v = this.type.eval(false);
+    if (!(type_v instanceof Dep)) {
+      throw ("Invalid instantiation: `" + this.to_string(context) + "`.\n"
+          + "Its type must be a dependent intersection `<x : A> B`.");
     }
-    if (!this.val0.eval(true).equal(this.val1.eval(true))) {
-      throw "Values of " + this.to_string(context) + " intersection are not equal.";
+    var expect = type_v.typ0;
+    var actual = this.val0.check(context);
+    if (!expect.eval(false).equal(actual.eval(false))) {
+      throw context.show_mismatch(expect, actual, "first value of intersection: `" + this.to_string(context) + "`");
     }
-    return new Dep(this.name, val0_t, this.typ1);
+    var expect = type_v.typ1.subst(0, this.val0);
+    var actual = this.val1.check(context);
+    if (!expect.eval(false).equal(actual.eval(false))) {
+      throw context.show_mismatch(expect, actual, "second value of intersection: `" + this.to_string(context) + "`");
+    }
+    if (!this.val0.eval(false).equal(this.val1.eval(false))) {
+      throw ("Non-equal values on intersection: `" + this.to_string(context) + "`.\n"
+        + "- " + this.val0.eval(false).to_string(context) + "\n"
+        + "- " + this.val1.eval(false).to_string(context));
+    }
+    return type_v;
   }
 }
 
+// The first projection of a dependent intersection
+// Syntax: .x
 class Fst {
   constructor(term) {
     this.term = term;
@@ -500,19 +539,21 @@ class Fst {
     return this.term.equal(other);
   }
 
-  eval() {
-    return this.term.eval();
+  eval(except_bind) {
+    return this.term.eval(except_bind);
   }
 
   check(context = new Context([])) {
-    var term_t = this.term.check(context);
-    if (!(term_t instanceof Dep)) {
+    var term_t = this.term.check(context).eval(true);
+    if (!(term_t.eval(false) instanceof Dep)) {
       throw "The term " + this.to_string(context) + " isn't a dependent intersection.";
     }
     return term_t.typ0;
   }
 }
 
+// The second projection of a dependent intersection
+// Syntax: +x
 class Snd {
   constructor(term) {
     this.term = term;
@@ -534,12 +575,12 @@ class Snd {
     return this.term.equal(other);
   }
 
-  eval() {
-    return this.term.eval();
+  eval(except_bind) {
+    return this.term.eval(except_bind);
   }
 
   check(context = new Context([])) {
-    var term_t = this.term.check(context).eval();
+    var term_t = this.term.check(context).eval(true);
     if (!(term_t instanceof Dep)) {
       throw "The term " + this.to_string(context) + " isn't a dependent intersection.";
     }
@@ -547,6 +588,8 @@ class Snd {
   }
 }
 
+// Heterogeneous equality type
+// Syntax: |a = b|
 class Eql {
   constructor(val0, val1) {
     this.val0 = val0;
@@ -580,9 +623,9 @@ class Eql {
     return false;
   }
 
-  eval() {
-    var val0 = this.val0.eval();
-    var val1 = this.val1.eval();
+  eval(except_bind) {
+    var val0 = this.val0.eval(except_bind);
+    var val1 = this.val1.eval(except_bind);
     return new Eql(val0, val1);
   }
 
@@ -591,6 +634,8 @@ class Eql {
   }
 }
 
+// Equality reflexivity of term `t`, erasing to `k`
+// Syntax: $t k
 class Rfl {
   constructor(term, eras) {
     this.term = term;
@@ -619,8 +664,8 @@ class Rfl {
     return this.eras.equal(other);
   }
 
-  eval() {
-    return this.eras.eval();
+  eval(except_bind) {
+    return this.eras.eval(except_bind);
   }
 
   check(context = new Context([])) {
@@ -628,6 +673,8 @@ class Rfl {
   }
 }
 
+// Symmetry of equality
+// Syntax: ~e
 class Sym {
   constructor(iseq) {
     this.iseq = iseq;
@@ -652,13 +699,12 @@ class Sym {
     return this.iseq.equal(other);
   }
 
-  eval() {
-    var iseq = this.iseq.eval();
-    return iseq;
+  eval(except_bind) {
+    return this.iseq.eval(except_bind);
   }
 
   check(context = new Context([])) {
-    var iseq_t = this.iseq.check(context);
+    var iseq_t = this.iseq.check(context).eval(true);
     if (!(iseq_t instanceof Eql)) {
       throw "Non-equality symmetry: " + this.to_string() + "."
     }
@@ -666,6 +712,8 @@ class Sym {
   }
 }
 
+// Type-guided rewritting (allows replacing equal terms in types)
+// Syntax: %x (P x) e t
 class Rwt {
   constructor(name, type, iseq, term) {
     this.name = name;
@@ -702,25 +750,27 @@ class Rwt {
     return this.term.iseq(other);
   }
 
-  eval() {
-    return this.term.eval();
+  eval(except_bind) {
+    return this.term.eval(except_bind);
   }
 
   check(context = new Context([])) {
-    var iseq_t = this.iseq.check(context);
+    var iseq_t = this.iseq.check(context).eval(true);
     if (!(iseq_t instanceof Eql)) {
       throw "Non-equality rewrite: " + this.to_string(context) + ".";
     }
     var term_t = this.term.check(context);
-    var expect = this.type.subst(0, iseq_t.val0).eval(true);
-    var actual = term_t.eval(true);
-    if (!actual.equal(expect)) {
-      throw context.show_mismatch(expect, actual, "term of " + this.to_string(context) + " rewrite");
+    var expect = this.type.subst(0, iseq_t.val0);
+    var actual = term_t;
+    if (!actual.eval(false).equal(expect.eval(false))) {
+      throw context.show_mismatch(expect, actual, "(" + this.to_string(context) + ") rewrite");
     }
     return this.type.subst(0, iseq_t.val1);
   }
 }
 
+// Type casting (if `a = b`, gives `b` the type of `a`)
+// Syntax: ^e a b
 class Cst {
   constructor(iseq, val0, val1) {
     this.iseq = iseq;
@@ -753,8 +803,8 @@ class Cst {
     return this.val1.equal(other);
   }
 
-  eval() {
-    return this.val1.eval();
+  eval(except_bind) {
+    return this.val1.eval(except_bind);
   }
 
   check(context = new Context([])) {
@@ -767,7 +817,7 @@ class Cst {
   }
 }
 
-function string_to_term(code) {
+function parse(code) {
   var index = 0;
 
   function is_space(char) {
@@ -775,7 +825,7 @@ function string_to_term(code) {
   }
 
   function is_name_char(char) {
-    return "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_~".indexOf(char) !== -1;
+    return "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".indexOf(char) !== -1;
   }
 
   function skip_spaces() {
@@ -859,8 +909,7 @@ function string_to_term(code) {
     else if (match("[")) {
       var eras = match("-");
       var name = parse_name();
-      var skip = parse_exact(":");
-      var bind = parse_term(context);
+      var bind = match(":") ? parse_term(context) : null;
       var skip = parse_exact("]");
       var body = parse_term(context.extend([name, null]));
       return new Lam(eras, name, bind, body);
@@ -877,15 +926,13 @@ function string_to_term(code) {
     }
 
     // Dependent intersection value
-    else if (match("@")) {
-      var name = parse_name();
-      var skip = parse_exact(":");
-      var typ1 = parse_term(context.extend([name, null]));
+    else if (match(":")) {
+      var type = parse_term(context);
       var skip = parse_exact("=");
       var val0 = parse_term(context);
       var skip = parse_exact("&");
       var val1 = parse_term(context);
-      return new Bth(name, typ1, val0, val1);
+      return new New(type, val0, val1);
     }
 
     // Dependent intersection erased view
@@ -943,8 +990,16 @@ function string_to_term(code) {
     else if (match("def")) {
       var name = parse_name();
       var term = parse_term(context);
-      var body = parse_term(context.extend([name, null]));
-      return body.subst(0, new Nik(name, term));
+      var body = parse_term(context.extend([name, new Ref(name, term, true)]));
+      return body.shift(0, -1);
+    }
+
+    // Local definition
+    else if (match("let")) {
+      var name = parse_name();
+      var term = parse_term(context);
+      var body = parse_term(context.extend([name, new Ref(name, term, false)]));
+      return body.shift(0, -1);
     }
 
     // Variable (named)
@@ -965,4 +1020,4 @@ function string_to_term(code) {
   return parse_term(new Context([]));
 }
 
-module.exports = string_to_term;
+module.exports = {Context, Ref, Typ, All, Lam, App, Var, Dep, New, Fst, Snd, Eql, Rfl, Sym, Rwt, Cst, parse};
